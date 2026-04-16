@@ -1,0 +1,368 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="ru" data-content_root="../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>app &mdash; документация ABtool 0.1.0</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=92fd9be5" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=9edc463e" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=6ff560e8"></script>
+      <script src="../_static/doctools.js?v=9a2dae69"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+      <script src="../_static/translations.js?v=29b1f277"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Алфавитный указатель" href="../genindex.html" />
+    <link rel="search" title="Поиск" href="../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            ABtool
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Поиск в документации" aria-label="Поиск в документации" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Меню навигации">
+              <p class="caption" role="heading"><span class="caption-text">Содержание:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../modules.html">backend</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Меню навигации для мобильных устройств" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">ABtool</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Навигация по страницам">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="index.html">Код модуля</a></li>
+      <li class="breadcrumb-item active">app</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Исходный код app</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">ABtool — веб-сервис для планирования и анализа A/B тестов.</span>
+
+<span class="sd">Модуль содержит расчётные функции для:</span>
+<span class="sd">- определения необходимого размера выборки;</span>
+<span class="sd">- вычисления конверсии группы;</span>
+<span class="sd">- расчёта относительного прироста (uplift);</span>
+<span class="sd">- валидации входных параметров;</span>
+<span class="sd">- интерпретации результата теста на понятном языке;</span>
+<span class="sd">- статистической проверки значимости разницы двух конверсий.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span> <span class="nn">math</span>
+
+
+<div class="viewcode-block" id="calculate_sample_size">
+<a class="viewcode-back" href="../app.html#app.calculate_sample_size">[документация]</a>
+<span class="k">def</span> <span class="nf">calculate_sample_size</span><span class="p">(</span><span class="n">baseline_cr</span><span class="p">,</span> <span class="n">mde</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.05</span><span class="p">,</span> <span class="n">power</span><span class="o">=</span><span class="mf">0.80</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Рассчитывает необходимый размер выборки для A/B теста.</span>
+
+<span class="sd">    Использует стандартную формулу для двустороннего теста двух пропорций.</span>
+<span class="sd">    Z-значения фиксированы для наиболее распространённых значений alpha и power.</span>
+
+<span class="sd">    Аргументы:</span>
+<span class="sd">        baseline_cr (float): базовая конверсия контрольной группы, например 0.10</span>
+<span class="sd">        mde (float): минимальный ожидаемый эффект (абсолютный), например 0.02</span>
+<span class="sd">        alpha (float): уровень значимости, по умолчанию 0.05</span>
+<span class="sd">        power (float): статистическая мощность (1 - beta), по умолчанию 0.80</span>
+
+<span class="sd">    Возвращает:</span>
+<span class="sd">        int: необходимое количество пользователей на каждую группу</span>
+
+<span class="sd">    Пример:</span>
+<span class="sd">        &gt;&gt;&gt; calculate_sample_size(0.10, 0.02)</span>
+<span class="sd">        3843</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># z-значения для двустороннего теста</span>
+    <span class="n">z_alpha</span> <span class="o">=</span> <span class="mf">1.96</span>   <span class="c1"># alpha = 0.05</span>
+    <span class="n">z_beta</span> <span class="o">=</span> <span class="mf">0.84</span>    <span class="c1"># power = 0.80</span>
+
+    <span class="n">p1</span> <span class="o">=</span> <span class="n">baseline_cr</span>
+    <span class="n">p2</span> <span class="o">=</span> <span class="n">baseline_cr</span> <span class="o">+</span> <span class="n">mde</span>
+    <span class="n">p_avg</span> <span class="o">=</span> <span class="p">(</span><span class="n">p1</span> <span class="o">+</span> <span class="n">p2</span><span class="p">)</span> <span class="o">/</span> <span class="mi">2</span>
+
+    <span class="n">numerator</span> <span class="o">=</span> <span class="p">(</span><span class="n">z_alpha</span> <span class="o">*</span> <span class="n">math</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">p_avg</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">p_avg</span><span class="p">))</span> <span class="o">+</span>
+                 <span class="n">z_beta</span> <span class="o">*</span> <span class="n">math</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">p1</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">p1</span><span class="p">)</span> <span class="o">+</span> <span class="n">p2</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">p2</span><span class="p">)))</span> <span class="o">**</span> <span class="mi">2</span>
+    <span class="n">denominator</span> <span class="o">=</span> <span class="p">(</span><span class="n">p2</span> <span class="o">-</span> <span class="n">p1</span><span class="p">)</span> <span class="o">**</span> <span class="mi">2</span>
+
+    <span class="k">return</span> <span class="n">math</span><span class="o">.</span><span class="n">ceil</span><span class="p">(</span><span class="n">numerator</span> <span class="o">/</span> <span class="n">denominator</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="calculate_conversion_rate">
+<a class="viewcode-back" href="../app.html#app.calculate_conversion_rate">[документация]</a>
+<span class="k">def</span> <span class="nf">calculate_conversion_rate</span><span class="p">(</span><span class="n">conversions</span><span class="p">,</span> <span class="n">visitors</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Рассчитывает конверсию группы.</span>
+
+<span class="sd">    Аргументы:</span>
+<span class="sd">        conversions (int): количество целевых действий (конверсий)</span>
+<span class="sd">        visitors (int): общее количество посетителей в группе</span>
+
+<span class="sd">    Возвращает:</span>
+<span class="sd">        float: конверсия в диапазоне [0, 1]</span>
+
+<span class="sd">    Исключения:</span>
+<span class="sd">        ValueError: если visitors &lt;= 0 или conversions &gt; visitors</span>
+
+<span class="sd">    Пример:</span>
+<span class="sd">        &gt;&gt;&gt; calculate_conversion_rate(500, 5000)</span>
+<span class="sd">        0.1</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">visitors</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Количество посетителей должно быть больше нуля&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">conversions</span> <span class="o">&gt;</span> <span class="n">visitors</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Число конверсий не может превышать число посетителей&quot;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">conversions</span> <span class="o">/</span> <span class="n">visitors</span></div>
+
+
+
+<div class="viewcode-block" id="calculate_uplift">
+<a class="viewcode-back" href="../app.html#app.calculate_uplift">[документация]</a>
+<span class="k">def</span> <span class="nf">calculate_uplift</span><span class="p">(</span><span class="n">cr_control</span><span class="p">,</span> <span class="n">cr_variant</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Рассчитывает относительный прирост конверсии варианта (uplift).</span>
+
+<span class="sd">    Аргументы:</span>
+<span class="sd">        cr_control (float): конверсия контрольной группы</span>
+<span class="sd">        cr_variant (float): конверсия варианта B</span>
+
+<span class="sd">    Возвращает:</span>
+<span class="sd">        float: uplift в процентах; положительное значение означает улучшение,</span>
+<span class="sd">               отрицательное — ухудшение. Например, 12.5 означает +12.5%.</span>
+
+<span class="sd">    Пример:</span>
+<span class="sd">        &gt;&gt;&gt; calculate_uplift(0.10, 0.112)</span>
+<span class="sd">        12.0</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">cr_control</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">return</span> <span class="mf">0.0</span>
+    <span class="k">return</span> <span class="p">(</span><span class="n">cr_variant</span> <span class="o">-</span> <span class="n">cr_control</span><span class="p">)</span> <span class="o">/</span> <span class="n">cr_control</span> <span class="o">*</span> <span class="mi">100</span></div>
+
+
+
+<div class="viewcode-block" id="validate_inputs">
+<a class="viewcode-back" href="../app.html#app.validate_inputs">[документация]</a>
+<span class="k">def</span> <span class="nf">validate_inputs</span><span class="p">(</span><span class="n">baseline_cr</span><span class="p">,</span> <span class="n">mde</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Проверяет корректность входных параметров для расчёта выборки.</span>
+
+<span class="sd">    Аргументы:</span>
+<span class="sd">        baseline_cr (float): базовая конверсия, должна быть в диапазоне (0, 1)</span>
+<span class="sd">        mde (float): минимальный ожидаемый эффект, должен быть &gt; 0 и</span>
+<span class="sd">                     не превышать 1 - baseline_cr</span>
+
+<span class="sd">    Возвращает:</span>
+<span class="sd">        tuple[bool, str]: пара (результат, сообщение).</span>
+<span class="sd">            True и пустая строка — если параметры корректны.</span>
+<span class="sd">            False и описание ошибки — если параметры некорректны.</span>
+
+<span class="sd">    Пример:</span>
+<span class="sd">        &gt;&gt;&gt; validate_inputs(0.10, 0.02)</span>
+<span class="sd">        (True, &#39;&#39;)</span>
+<span class="sd">        &gt;&gt;&gt; validate_inputs(1.5, 0.02)</span>
+<span class="sd">        (False, &#39;baseline_cr должна быть в диапазоне (0, 1)&#39;)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="mi">0</span> <span class="o">&lt;</span> <span class="n">baseline_cr</span> <span class="o">&lt;</span> <span class="mi">1</span><span class="p">):</span>
+        <span class="k">return</span> <span class="kc">False</span><span class="p">,</span> <span class="s2">&quot;baseline_cr должна быть в диапазоне (0, 1)&quot;</span>
+    <span class="k">if</span> <span class="n">mde</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">False</span><span class="p">,</span> <span class="s2">&quot;MDE должен быть больше нуля&quot;</span>
+    <span class="k">if</span> <span class="n">baseline_cr</span> <span class="o">+</span> <span class="n">mde</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">False</span><span class="p">,</span> <span class="s2">&quot;Сумма baseline_cr и MDE не может превышать 1&quot;</span>
+    <span class="k">return</span> <span class="kc">True</span><span class="p">,</span> <span class="s2">&quot;&quot;</span></div>
+
+
+
+<div class="viewcode-block" id="interpret_result">
+<a class="viewcode-back" href="../app.html#app.interpret_result">[документация]</a>
+<span class="k">def</span> <span class="nf">interpret_result</span><span class="p">(</span><span class="n">p_value</span><span class="p">,</span> <span class="n">uplift_pct</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.05</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Формирует текстовую интерпретацию результата A/B теста.</span>
+
+<span class="sd">    Аргументы:</span>
+<span class="sd">        p_value (float): достигнутый уровень значимости теста</span>
+<span class="sd">        uplift_pct (float): относительный прирост конверсии в процентах</span>
+<span class="sd">        alpha (float): порог значимости, по умолчанию 0.05</span>
+
+<span class="sd">    Возвращает:</span>
+<span class="sd">        str: текстовый вывод на русском языке с рекомендацией</span>
+
+<span class="sd">    Пример:</span>
+<span class="sd">        &gt;&gt;&gt; interpret_result(0.03, 12.0)</span>
+<span class="sd">        &#39;Результат статистически значим (p=0.0300 &lt; 0.05). Вариант B показал</span>
+<span class="sd">        прирост +12.00%. Рекомендуется внедрить изменение.&#39;</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">significant</span> <span class="o">=</span> <span class="n">p_value</span> <span class="o">&lt;</span> <span class="n">alpha</span>
+    <span class="n">direction</span> <span class="o">=</span> <span class="s2">&quot;прирост&quot;</span> <span class="k">if</span> <span class="n">uplift_pct</span> <span class="o">&gt;=</span> <span class="mi">0</span> <span class="k">else</span> <span class="s2">&quot;снижение&quot;</span>
+    <span class="n">sign</span> <span class="o">=</span> <span class="s2">&quot;+&quot;</span> <span class="k">if</span> <span class="n">uplift_pct</span> <span class="o">&gt;=</span> <span class="mi">0</span> <span class="k">else</span> <span class="s2">&quot;&quot;</span>
+
+    <span class="k">if</span> <span class="n">significant</span><span class="p">:</span>
+        <span class="n">recommendation</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="s2">&quot;Рекомендуется внедрить изменение.&quot;</span>
+            <span class="k">if</span> <span class="n">uplift_pct</span> <span class="o">&gt;</span> <span class="mi">0</span>
+            <span class="k">else</span> <span class="s2">&quot;Рекомендуется отклонить изменение.&quot;</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;Результат статистически значим (p=</span><span class="si">{</span><span class="n">p_value</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2"> &lt; </span><span class="si">{</span><span class="n">alpha</span><span class="si">}</span><span class="s2">). &quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;Вариант B показал </span><span class="si">{</span><span class="n">direction</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">sign</span><span class="si">}{</span><span class="n">uplift_pct</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">%. &quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">recommendation</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">return</span> <span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;Результат статистически не значим (p=</span><span class="si">{</span><span class="n">p_value</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2"> &gt;= </span><span class="si">{</span><span class="n">alpha</span><span class="si">}</span><span class="s2">). &quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;Недостаточно данных для вывода. &quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;Рекомендуется продолжить сбор данных или пересмотреть MDE.&quot;</span>
+        <span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="compare_proportions">
+<a class="viewcode-back" href="../app.html#app.compare_proportions">[документация]</a>
+<span class="k">def</span> <span class="nf">compare_proportions</span><span class="p">(</span><span class="n">conv_a</span><span class="p">,</span> <span class="n">n_a</span><span class="p">,</span> <span class="n">conv_b</span><span class="p">,</span> <span class="n">n_b</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Выполняет двусторонний z-тест для сравнения двух пропорций.</span>
+
+<span class="sd">    Реализован без использования scipy — только стандартная библиотека math.</span>
+<span class="sd">    Используется нормальное приближение, применимое при n &gt;= 30.</span>
+
+<span class="sd">    Аргументы:</span>
+<span class="sd">        conv_a (int): число конверсий в контрольной группе A</span>
+<span class="sd">        n_a (int): число посетителей в контрольной группе A</span>
+<span class="sd">        conv_b (int): число конверсий в варианте B</span>
+<span class="sd">        n_b (int): число посетителей в варианте B</span>
+
+<span class="sd">    Возвращает:</span>
+<span class="sd">        dict: словарь с ключами:</span>
+<span class="sd">            - z_stat (float): значение z-статистики</span>
+<span class="sd">            - p_value (float): двустороннее p-value (приближённое)</span>
+<span class="sd">            - cr_a (float): конверсия группы A</span>
+<span class="sd">            - cr_b (float): конверсия группы B</span>
+<span class="sd">            - significant (bool): True если p_value &lt; 0.05</span>
+
+<span class="sd">    Пример:</span>
+<span class="sd">        &gt;&gt;&gt; compare_proportions(500, 5000, 560, 5000)</span>
+<span class="sd">        {&#39;z_stat&#39;: 2.134, &#39;p_value&#39;: 0.033, &#39;cr_a&#39;: 0.1, &#39;cr_b&#39;: 0.112,</span>
+<span class="sd">         &#39;significant&#39;: True}</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">cr_a</span> <span class="o">=</span> <span class="n">conv_a</span> <span class="o">/</span> <span class="n">n_a</span>
+    <span class="n">cr_b</span> <span class="o">=</span> <span class="n">conv_b</span> <span class="o">/</span> <span class="n">n_b</span>
+
+    <span class="c1"># Объединённая пропорция</span>
+    <span class="n">p_pool</span> <span class="o">=</span> <span class="p">(</span><span class="n">conv_a</span> <span class="o">+</span> <span class="n">conv_b</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="n">n_a</span> <span class="o">+</span> <span class="n">n_b</span><span class="p">)</span>
+    <span class="n">se</span> <span class="o">=</span> <span class="n">math</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">p_pool</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">p_pool</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">/</span> <span class="n">n_a</span> <span class="o">+</span> <span class="mi">1</span> <span class="o">/</span> <span class="n">n_b</span><span class="p">))</span>
+
+    <span class="k">if</span> <span class="n">se</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;z_stat&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="s2">&quot;p_value&quot;</span><span class="p">:</span> <span class="mf">1.0</span><span class="p">,</span> <span class="s2">&quot;cr_a&quot;</span><span class="p">:</span> <span class="n">cr_a</span><span class="p">,</span> <span class="s2">&quot;cr_b&quot;</span><span class="p">:</span> <span class="n">cr_b</span><span class="p">,</span> <span class="s2">&quot;significant&quot;</span><span class="p">:</span> <span class="kc">False</span><span class="p">}</span>
+
+    <span class="n">z_stat</span> <span class="o">=</span> <span class="p">(</span><span class="n">cr_b</span> <span class="o">-</span> <span class="n">cr_a</span><span class="p">)</span> <span class="o">/</span> <span class="n">se</span>
+
+    <span class="c1"># Приближение p-value через стандартное нормальное распределение</span>
+    <span class="c1"># Используем формулу Абрамовица и Стегана (точность ~1e-4)</span>
+    <span class="n">t</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">/</span> <span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="mf">0.2316419</span> <span class="o">*</span> <span class="nb">abs</span><span class="p">(</span><span class="n">z_stat</span><span class="p">))</span>
+    <span class="n">poly</span> <span class="o">=</span> <span class="n">t</span> <span class="o">*</span> <span class="p">(</span><span class="mf">0.319381530</span>
+                <span class="o">+</span> <span class="n">t</span> <span class="o">*</span> <span class="p">(</span><span class="o">-</span><span class="mf">0.356563782</span>
+                <span class="o">+</span> <span class="n">t</span> <span class="o">*</span> <span class="p">(</span><span class="mf">1.781477937</span>
+                <span class="o">+</span> <span class="n">t</span> <span class="o">*</span> <span class="p">(</span><span class="o">-</span><span class="mf">1.821255978</span>
+                <span class="o">+</span> <span class="n">t</span> <span class="o">*</span> <span class="mf">1.330274429</span><span class="p">))))</span>
+    <span class="n">p_one_tail</span> <span class="o">=</span> <span class="p">(</span><span class="mi">1</span> <span class="o">/</span> <span class="n">math</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">math</span><span class="o">.</span><span class="n">pi</span><span class="p">))</span> <span class="o">*</span> <span class="n">math</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="o">-</span><span class="mf">0.5</span> <span class="o">*</span> <span class="n">z_stat</span> <span class="o">**</span> <span class="mi">2</span><span class="p">)</span> <span class="o">*</span> <span class="n">poly</span>
+    <span class="n">p_value</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">p_one_tail</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="p">{</span>
+        <span class="s2">&quot;z_stat&quot;</span><span class="p">:</span> <span class="nb">round</span><span class="p">(</span><span class="n">z_stat</span><span class="p">,</span> <span class="mi">4</span><span class="p">),</span>
+        <span class="s2">&quot;p_value&quot;</span><span class="p">:</span> <span class="nb">round</span><span class="p">(</span><span class="n">p_value</span><span class="p">,</span> <span class="mi">6</span><span class="p">),</span>
+        <span class="s2">&quot;cr_a&quot;</span><span class="p">:</span> <span class="nb">round</span><span class="p">(</span><span class="n">cr_a</span><span class="p">,</span> <span class="mi">6</span><span class="p">),</span>
+        <span class="s2">&quot;cr_b&quot;</span><span class="p">:</span> <span class="nb">round</span><span class="p">(</span><span class="n">cr_b</span><span class="p">,</span> <span class="mi">6</span><span class="p">),</span>
+        <span class="s2">&quot;significant&quot;</span><span class="p">:</span> <span class="n">p_value</span> <span class="o">&lt;</span> <span class="mf">0.05</span><span class="p">,</span>
+    <span class="p">}</span></div>
+
+
+
+<span class="c1"># ── Пример использования ──────────────────────────────────────────</span>
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
+    <span class="c1"># Валидация входных данных</span>
+    <span class="n">ok</span><span class="p">,</span> <span class="n">msg</span> <span class="o">=</span> <span class="n">validate_inputs</span><span class="p">(</span><span class="mf">0.10</span><span class="p">,</span> <span class="mf">0.02</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Валидация: </span><span class="si">{</span><span class="s1">&#39;OK&#39;</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="n">ok</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="s1">&#39;Ошибка: &#39;</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">msg</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="c1"># Расчёт выборки</span>
+    <span class="n">n</span> <span class="o">=</span> <span class="n">calculate_sample_size</span><span class="p">(</span><span class="n">baseline_cr</span><span class="o">=</span><span class="mf">0.10</span><span class="p">,</span> <span class="n">mde</span><span class="o">=</span><span class="mf">0.02</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Размер выборки: </span><span class="si">{</span><span class="n">n</span><span class="si">}</span><span class="s2"> на группу (</span><span class="si">{</span><span class="n">n</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="mi">2</span><span class="si">}</span><span class="s2"> всего)&quot;</span><span class="p">)</span>
+
+    <span class="c1"># Конверсии</span>
+    <span class="n">cr_a</span> <span class="o">=</span> <span class="n">calculate_conversion_rate</span><span class="p">(</span><span class="mi">500</span><span class="p">,</span> <span class="mi">5000</span><span class="p">)</span>
+    <span class="n">cr_b</span> <span class="o">=</span> <span class="n">calculate_conversion_rate</span><span class="p">(</span><span class="mi">560</span><span class="p">,</span> <span class="mi">5000</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;CR_A = </span><span class="si">{</span><span class="n">cr_a</span><span class="si">:</span><span class="s2">.2%</span><span class="si">}</span><span class="s2">, CR_B = </span><span class="si">{</span><span class="n">cr_b</span><span class="si">:</span><span class="s2">.2%</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="c1"># Uplift</span>
+    <span class="n">uplift</span> <span class="o">=</span> <span class="n">calculate_uplift</span><span class="p">(</span><span class="n">cr_a</span><span class="p">,</span> <span class="n">cr_b</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Uplift: </span><span class="si">{</span><span class="n">uplift</span><span class="si">:</span><span class="s2">+.1f</span><span class="si">}</span><span class="s2">%&quot;</span><span class="p">)</span>
+
+    <span class="c1"># Сравнение пропорций</span>
+    <span class="n">result</span> <span class="o">=</span> <span class="n">compare_proportions</span><span class="p">(</span><span class="mi">500</span><span class="p">,</span> <span class="mi">5000</span><span class="p">,</span> <span class="mi">560</span><span class="p">,</span> <span class="mi">5000</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;z = </span><span class="si">{</span><span class="n">result</span><span class="p">[</span><span class="s1">&#39;z_stat&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">, p = </span><span class="si">{</span><span class="n">result</span><span class="p">[</span><span class="s1">&#39;p_value&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">, значимо: </span><span class="si">{</span><span class="n">result</span><span class="p">[</span><span class="s1">&#39;significant&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="c1"># Интерпретация</span>
+    <span class="nb">print</span><span class="p">(</span><span class="n">interpret_result</span><span class="p">(</span><span class="n">result</span><span class="p">[</span><span class="s2">&quot;p_value&quot;</span><span class="p">],</span> <span class="n">uplift</span><span class="p">))</span>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Авторские права 2025, Лисуненко В.Ю., Левашева К.Д.. </p>
+  </div>
+
+  Собрано при помощи <a href="https://www.sphinx-doc.org/">Sphinx</a> с использованием
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">темы,</a>
+    предоставленной <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
