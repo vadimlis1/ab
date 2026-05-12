@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ABtool — A/B тестирование</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', Arial, sans-serif; background: #f0f2f5; color: #1a1a2e; min-height: 100vh; }
+    header { background: #1a1a2e; color: #fff; padding: 18px 32px; display: flex; align-items: center; gap: 14px; box-shadow: 0 2px 8px rgba(0,0,0,0.18); }
+    header .logo { font-size: 1.6rem; font-weight: 700; letter-spacing: 1px; color: #4fc3f7; }
+    header .subtitle { font-size: 0.9rem; color: #aaa; }
+    nav { background: #16213e; display: flex; padding: 0 32px; }
+    nav button { background: none; border: none; color: #aaa; padding: 13px 22px; cursor: pointer; font-size: 0.95rem; border-bottom: 3px solid transparent; transition: color 0.2s, border-color 0.2s; }
+    nav button.active, nav button:hover { color: #4fc3f7; border-bottom-color: #4fc3f7; }
+    main { max-width: 820px; margin: 36px auto; padding: 0 16px; }
+    .card { background: #fff; border-radius: 12px; padding: 32px; box-shadow: 0 2px 12px rgba(0,0,0,0.07); margin-bottom: 24px; }
+    .card h2 { font-size: 1.15rem; font-weight: 700; margin-bottom: 22px; color: #16213e; border-left: 4px solid #4fc3f7; padding-left: 12px; }
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-bottom: 22px; }
+    @media (max-width: 540px) { .form-grid { grid-template-columns: 1fr; } }
+    label { display: block; font-size: 0.82rem; font-weight: 600; color: #555; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
+    input[type="number"] { width: 100%; padding: 10px 13px; border: 1.5px solid #dde1ea; border-radius: 7px; font-size: 1rem; color: #1a1a2e; outline: none; transition: border-color 0.2s; }
+    input[type="number"]:focus { border-color: #4fc3f7; }
+    .hint { font-size: 0.78rem; color: #999; margin-top: 4px; }
+    button.btn-calc { background: #4fc3f7; color: #fff; border: none; border-radius: 8px; padding: 12px 32px; font-size: 1rem; font-weight: 700; cursor: pointer; transition: background 0.2s; }
+    button.btn-calc:hover { background: #0288d1; }
+    .result-block { display: none; margin-top: 26px; background: #f0f9ff; border: 1.5px solid #b3e5fc; border-radius: 10px; padding: 22px 24px; }
+    .result-block.visible { display: block; }
+    .result-block.error { background: #fff3f3; border-color: #ffcdd2; }
+    .result-big { font-size: 2.4rem; font-weight: 800; color: #0288d1; line-height: 1; }
+    .result-label { font-size: 0.85rem; color: #666; margin-top: 6px; }
+    .result-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-top: 16px; }
+    @media (max-width: 540px) { .result-grid { grid-template-columns: 1fr 1fr; } }
+    .stat-box { background: #fff; border-radius: 8px; padding: 14px 16px; text-align: center; border: 1px solid #e3f2fd; }
+    .stat-box .val { font-size: 1.35rem; font-weight: 700; color: #16213e; }
+    .stat-box .val.green { color: #2e7d32; }
+    .stat-box .val.red   { color: #c62828; }
+    .stat-box .lbl { font-size: 0.75rem; color: #888; margin-top: 4px; }
+    .interpretation { margin-top: 18px; padding: 14px 18px; border-radius: 8px; font-size: 0.93rem; line-height: 1.6; font-weight: 500; }
+    .interpretation.sig   { background: #e8f5e9; color: #1b5e20; border-left: 4px solid #43a047; }
+    .interpretation.nosig { background: #fff8e1; color: #6d4c00; border-left: 4px solid #ffb300; }
+    .error-msg { color: #c62828; font-weight: 600; }
+    .history-empty { text-align: center; color: #bbb; padding: 40px 0; font-size: 1rem; }
+    .hist-item { border: 1px solid #e8eaf0; border-radius: 9px; padding: 14px 18px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; background: #fafbff; gap: 10px; flex-wrap: wrap; }
+    .hist-item .hist-type { font-size: 0.75rem; font-weight: 700; text-transform: uppercase; color: #4fc3f7; background: #e1f5fe; border-radius: 4px; padding: 2px 8px; }
+    .hist-item .hist-params { font-size: 0.85rem; color: #444; flex: 1; }
+    .hist-item .hist-result { font-size: 0.9rem; font-weight: 700; color: #16213e; }
+    .hist-item .hist-date  { font-size: 0.75rem; color: #aaa; }
+    .btn-clear { background: none; border: 1.5px solid #ffcdd2; color: #c62828; border-radius: 7px; padding: 7px 18px; cursor: pointer; font-size: 0.85rem; font-weight: 600; margin-bottom: 18px; }
+    .btn-clear:hover { background: #fff3f3; }
+    footer { text-align: center; color: #bbb; font-size: 0.8rem; padding: 24px 0 32px; }
+  </style>
+</head>
+<body>
+<header>
+  <div>
+    <div class="logo">ABtool</div>
+    <div class="subtitle">Веб-сервис для планирования и анализа A/B тестов</div>
+  </div>
+</header>
+<nav>
+  <button class="active" onclick="showTab('sample')">Размер выборки</button>
+  <button onclick="showTab('analyze')">Анализ результатов</button>
+  <button onclick="showTab('history')">История</button>
+</nav>
+<main>
+  <div id="tab-sample">
+    <div class="card">
+      <h2>Калькулятор размера выборки</h2>
+      <div class="form-grid">
+        <div>
+          <label>Базовая конверсия (CR)</label>
+          <input type="number" id="s-cr" value="0.10" step="0.01" min="0.01" max="0.99" />
+          <div class="hint">Текущая конверсия контрольной группы, например 0.10 = 10%</div>
+        </div>
+        <div>
+          <label>MDE (минимальный эффект)</label>
+          <input type="number" id="s-mde" value="0.02" step="0.01" min="0.001" />
+          <div class="hint">Минимальный ожидаемый прирост, например 0.02 = +2 п.п.</div>
+        </div>
+        <div>
+          <label>Уровень значимости α</label>
+          <input type="number" id="s-alpha" value="0.05" step="0.01" min="0.01" max="0.20" />
+          <div class="hint">Обычно 0.05</div>
+        </div>
+        <div>
+          <label>Мощность теста (power)</label>
+          <input type="number" id="s-power" value="0.80" step="0.05" min="0.50" max="0.99" />
+          <div class="hint">Обычно 0.80</div>
+        </div>
+      </div>
+      <button class="btn-calc" onclick="calcSample()">Рассчитать</button>
+      <div class="result-block" id="s-result">
+        <div class="result-big" id="s-n"></div>
+        <div class="result-label">пользователей на каждую группу</div>
+        <div class="result-grid">
+          <div class="stat-box"><div class="val" id="s-total"></div><div class="lbl">Всего участников</div></div>
+          <div class="stat-box"><div class="val" id="s-cr-show"></div><div class="lbl">Базовая конверсия</div></div>
+          <div class="stat-box"><div class="val" id="s-mde-show"></div><div class="lbl">MDE</div></div>
+        </div>
+      </div>
+      <div class="result-block error" id="s-error"><span class="error-msg" id="s-errmsg"></span></div>
+    </div>
+  </div>
+  <div id="tab-analyze" style="display:none">
+    <div class="card">
+      <h2>Анализ результатов теста</h2>
+      <div class="form-grid">
+        <div><label>Посетители группы A (контроль)</label><input type="number" id="a-na" value="5000" min="1" /></div>
+        <div><label>Конверсии группы A</label><input type="number" id="a-ca" value="500" min="0" /></div>
+        <div><label>Посетители группы B (вариант)</label><input type="number" id="a-nb" value="5000" min="1" /></div>
+        <div><label>Конверсии группы B</label><input type="number" id="a-cb" value="560" min="0" /></div>
+      </div>
+      <button class="btn-calc" onclick="calcAnalyze()">Проанализировать</button>
+      <div class="result-block" id="a-result">
+        <div class="result-grid">
+          <div class="stat-box"><div class="val" id="a-cra"></div><div class="lbl">CR группы A</div></div>
+          <div class="stat-box"><div class="val" id="a-crb"></div><div class="lbl">CR группы B</div></div>
+          <div class="stat-box"><div class="val" id="a-uplift"></div><div class="lbl">Uplift</div></div>
+          <div class="stat-box"><div class="val" id="a-z"></div><div class="lbl">z-статистика</div></div>
+          <div class="stat-box"><div class="val" id="a-p"></div><div class="lbl">p-value</div></div>
+          <div class="stat-box"><div class="val" id="a-sig"></div><div class="lbl">Значимость</div></div>
+        </div>
+        <div class="interpretation" id="a-interp"></div>
+      </div>
+      <div class="result-block error" id="a-error"><span class="error-msg" id="a-errmsg"></span></div>
+    </div>
+  </div>
+  <div id="tab-history" style="display:none">
+    <div class="card">
+      <h2>История расчётов</h2>
+      <button class="btn-clear" onclick="clearHistory()">Очистить историю</button>
+      <div id="hist-list"></div>
+    </div>
+  </div>
+</main>
+<footer>ABtool © 2026 — Лисуненко В.Ю., Левашева К.Д. | РТУ МИРЭА, ИКБО-42-24</footer>
+<script>
+  const API = '';
+  function showTab(name) {
+    ['sample','analyze','history'].forEach(t => { document.getElementById('tab-'+t).style.display = t===name?'':'none'; });
+    document.querySelectorAll('nav button').forEach((btn,i) => { btn.classList.toggle('active',['sample','analyze','history'][i]===name); });
+    if (name==='history') renderHistory();
+  }
+  async function calcSample() {
+    hide('s-result'); hide('s-error');
+    const baseline_cr=parseFloat(document.getElementById('s-cr').value);
+    const mde=parseFloat(document.getElementById('s-mde').value);
+    const alpha=parseFloat(document.getElementById('s-alpha').value);
+    const power=parseFloat(document.getElementById('s-power').value);
+    try {
+      const res=await fetch(API+'/api/sample-size',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({baseline_cr,mde,alpha,power})});
+      const data=await res.json();
+      if(!res.ok){showError('s',data.error||'Ошибка');return;}
+      document.getElementById('s-n').textContent=data.sample_size_per_group.toLocaleString('ru');
+      document.getElementById('s-total').textContent=data.total.toLocaleString('ru');
+      document.getElementById('s-cr-show').textContent=(baseline_cr*100).toFixed(1)+'%';
+      document.getElementById('s-mde-show').textContent=(mde*100).toFixed(1)+' п.п.';
+      show('s-result');
+      addHistory('sample',{baseline_cr,mde,alpha,power},`${data.sample_size_per_group.toLocaleString('ru')} / группу`);
+    } catch(e){showError('s','Нет соединения с сервером: '+e.message);}
+  }
+  async function calcAnalyze() {
+    hide('a-result'); hide('a-error');
+    const n_a=parseInt(document.getElementById('a-na').value);
+    const conv_a=parseInt(document.getElementById('a-ca').value);
+    const n_b=parseInt(document.getElementById('a-nb').value);
+    const conv_b=parseInt(document.getElementById('a-cb').value);
+    try {
+      const res=await fetch(API+'/api/analyze',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({conv_a,n_a,conv_b,n_b})});
+      const data=await res.json();
+      if(!res.ok){showError('a',data.error||'Ошибка');return;}
+      const sig=data.significant;
+      const upSign=data.uplift_pct>=0?'+':'';
+      document.getElementById('a-cra').textContent=(data.cr_a*100).toFixed(2)+'%';
+      document.getElementById('a-crb').textContent=(data.cr_b*100).toFixed(2)+'%';
+      const upliftEl=document.getElementById('a-uplift');
+      upliftEl.textContent=upSign+data.uplift_pct.toFixed(2)+'%';
+      upliftEl.className='val '+(data.uplift_pct>=0?'green':'red');
+      document.getElementById('a-z').textContent=data.z_stat;
+      document.getElementById('a-p').textContent=data.p_value;
+      const sigEl=document.getElementById('a-sig');
+      sigEl.textContent=sig?'Да ✓':'Нет ✗';
+      sigEl.className='val '+(sig?'green':'red');
+      const interp=document.getElementById('a-interp');
+      interp.textContent=data.interpretation;
+      interp.className='interpretation '+(sig?'sig':'nosig');
+      show('a-result');
+      addHistory('analyze',{n_a,conv_a,n_b,conv_b},`p=${data.p_value}, uplift=${upSign}${data.uplift_pct.toFixed(2)}%`);
+    } catch(e){showError('a','Нет соединения с сервером: '+e.message);}
+  }
+  function getHistory(){try{return JSON.parse(localStorage.getItem('abtool_history')||'[]');}catch{return[];}}
+  function addHistory(type,params,result){const h=getHistory();h.unshift({type,params,result,date:new Date().toLocaleString('ru')});if(h.length>50)h.pop();localStorage.setItem('abtool_history',JSON.stringify(h));}
+  function clearHistory(){localStorage.removeItem('abtool_history');renderHistory();}
+  function renderHistory(){
+    const h=getHistory();const el=document.getElementById('hist-list');
+    if(!h.length){el.innerHTML='<div class="history-empty">История пуста</div>';return;}
+    el.innerHTML=h.map(item=>{
+      const typeLabel=item.type==='sample'?'Выборка':'Анализ';
+      const paramsStr=Object.entries(item.params).map(([k,v])=>`${k}=${v}`).join(', ');
+      return `<div class="hist-item"><span class="hist-type">${typeLabel}</span><span class="hist-params">${paramsStr}</span><span class="hist-result">${item.result}</span><span class="hist-date">${item.date}</span></div>`;
+    }).join('');
+  }
+  function show(id){document.getElementById(id).classList.add('visible');}
+  function hide(id){document.getElementById(id).classList.remove('visible');}
+  function showError(prefix,msg){document.getElementById(prefix+'-errmsg').textContent=msg;show(prefix+'-error');}
+</script>
+</body>
+</html>
